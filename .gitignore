@@ -39,3 +39,8 @@ CMakeFiles
 CMakeCache.txt
 cmake_install.cmake
 Makefile
+.vscode/c_cpp_properties.json
+.vscode/settings.json
+CPackConfig.cmake
+CPackSourceConfig.cmake
+VersionInfo.h
