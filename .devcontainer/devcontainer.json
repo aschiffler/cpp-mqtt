@@ -10,6 +10,6 @@
           "extensions": ["ms-vscode.cpptools-extension-pack","ms-vscode.cmake-tools","twxs.cmake","ms-vscode.cpptools"]
         }
     },	
-	"postStartCommand": "openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj \"/C=US/ST=Denial/L=Springfield/O=Dis/CN=www.example.com\" -keyout tls.key  -out tls.crt",
+	"postStartCommand": "openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -subj \"/C=US/ST=Denial/L=Springfield/O=Dis/CN=localhost\" -keyout tls.key  -out tls.crt",
 	"postAttachCommand": "mosquitto -c /workspaces/cpp-mqtt/test/mosquitto.conf"
 	}
