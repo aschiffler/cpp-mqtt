@@ -44,3 +44,5 @@ Makefile
 CPackConfig.cmake
 CPackSourceConfig.cmake
 VersionInfo.h
+tls.crt
+tls.key
