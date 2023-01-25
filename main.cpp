@@ -18,6 +18,8 @@ const std::string LWT_PAYLOAD			{ "Last will and testament." };
 const int  QOS = 1;
 const auto TIMEOUT = std::chrono::seconds(10);
 
+const std::string TOPIC("vlab/in");
+
 /////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -26,15 +28,50 @@ const auto TIMEOUT = std::chrono::seconds(10);
 class callback : public virtual mqtt::callback
 {
 public:
+	callback(mqtt::async_client& cli, mqtt::connect_options& connOpts):cli_(cli),connOpts_(connOpts){}
+	// The MQTT client
+	mqtt::async_client& cli_;
+	// Options to use if we need to reconnect
+	mqtt::connect_options& connOpts_;	
+
+	void reconnect() {
+		std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+		try {
+			cli_.connect(connOpts_);
+		}
+		catch (const mqtt::exception& exc) {
+			std::cerr << "Error: " << exc.what() << std::endl;
+			exit(1);
+		}
+	}
+
 	void connection_lost(const std::string& cause) override {
 		std::cout << "\nConnection lost" << std::endl;
 		if (!cause.empty())
 			std::cout << "\tcause: " << cause << std::endl;
+		reconnect();
 	}
 
 	void delivery_complete(mqtt::delivery_token_ptr tok) override {
 		std::cout << "\tDelivery complete for token: "
 			<< (tok ? tok->get_message_id() : -1) << std::endl;
+	}
+
+	// Callback for when a message arrives.
+	void message_arrived(mqtt::const_message_ptr msg) override {
+		std::cout << "Message arrived" << std::endl;
+		std::cout << "\ttopic: '" << msg->get_topic() << "'" << std::endl;
+		std::cout << "\tpayload: '" << msg->to_string() << "'\n" << std::endl;
+	}
+
+	void connected(const std::string& cause) override {
+		std::cout << "\nConnection success" << std::endl;
+		std::cout << "\nSubscribing to topic '" << TOPIC << "'\n"
+			<< "\tfor client " << DFLT_CLIENT_ID
+			<< " using QoS" << QOS << "\n"
+			<< "\nPress Q<Enter> to quit\n" << std::endl;
+
+		cli_.subscribe(TOPIC, QOS);
 	}
 };
 
@@ -68,9 +105,6 @@ int main(int argc, char* argv[])
 	cout << "Initializing for server '" << address << "'..." << endl;
 	mqtt::async_client client(address, clientID);
 
-	callback cb;
-	client.set_callback(cb);
-
 	// Build the connect options, including SSL and a LWT message.
 
 	auto sslopts = mqtt::ssl_options_builder()
@@ -90,6 +124,9 @@ int main(int argc, char* argv[])
 						.ssl(std::move(sslopts))
 						.finalize();
 
+	callback cb(client,connopts);
+	client.set_callback(cb);						
+
 	cout << "  ...OK" << endl;
 
 	try {
@@ -107,6 +144,11 @@ int main(int argc, char* argv[])
 		auto msg = mqtt::make_message("hello", "Hello secure C++ world!", QOS, false);
 		client.publish(msg)->wait_for(TIMEOUT);
 		cout << "  ...OK" << endl;
+
+		// Just block till user tells us to quit.
+
+		while (std::tolower(std::cin.get()) != 'q')
+		;
 
 		// Disconnect
 
