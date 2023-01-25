@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/universal:2-linux
+FROM mcr.microsoft.com/devcontainers/universal:2-focal
 
 RUN apt-key adv --keyserver hkps://keyserver.ubuntu.com --refresh-keys
 RUN apt-get update && apt-get install -y \ 
