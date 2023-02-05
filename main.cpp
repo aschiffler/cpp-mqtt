@@ -23,9 +23,10 @@ const std::string TOPIC					{"my-topic"};
 
 const int  	QOS 						= 2;
 const auto 	TIMEOUT 					= std::chrono::seconds(1);
-const int 	MY_MQTTVERSION 				= MQTTVERSION_5;	// or MQTTVERSION_5, MQTTVERSION_3_1
 const int 	MY_SESSION_EXPIRY_INTERVAL 	= 3600; 			// in seconds
 const int 	MY_MESSAGE_EXPIRY_INTERVAL 	= 60; 				// in seconds
+
+//#define MQTT5 // Comment to use MQTT version 3.1.1
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -158,7 +159,11 @@ int main(int argc, char* argv[])
 	// Create the client object
 	cout << "Initializing for server '" << address << "'..." << endl;
 	cout << "\nPress Q<Enter> or Ctrl+C to quit\n" << endl;
-	mqtt::async_client client(address, clientID,mqtt::create_options(MY_MQTTVERSION));
+#ifdef MQTT5	
+	mqtt::async_client client(address, clientID,mqtt::create_options(MQTTVERSION_5));
+#else
+	mqtt::async_client client(address, clientID,mqtt::create_options(MQTTVERSION_3_1_1));
+#endif
 
 	// 
 	auto willmsg = mqtt::message(LWT_TOPIC, LWT_PAYLOAD, QOS, true);
@@ -172,25 +177,36 @@ int main(int argc, char* argv[])
 					   })
 					   .finalize();
 	
-	
-	// add v5 specific options
+#ifdef MQTT5	
+	// Prepare v5 specific options
 	// --> see source code header: paho.mqtt.cpp/src/mqtt/properties.h for all options
 	auto properties = mqtt::properties();
-	if (MY_MQTTVERSION >= MQTTVERSION_5){
-		properties.add({mqtt::property::MESSAGE_EXPIRY_INTERVAL,MY_MESSAGE_EXPIRY_INTERVAL});
-		properties.add({mqtt::property::SESSION_EXPIRY_INTERVAL,MY_SESSION_EXPIRY_INTERVAL});
-	}
+	properties.add({mqtt::property::MESSAGE_EXPIRY_INTERVAL,MY_MESSAGE_EXPIRY_INTERVAL});
+	properties.add({mqtt::property::SESSION_EXPIRY_INTERVAL,MY_SESSION_EXPIRY_INTERVAL});
 
-	//
+	// Case version >= 5
 	auto connopts = mqtt::connect_options_builder()
-						.properties(std::move(properties))
-						.user_name(username)
-					    .password(password)
-						.mqtt_version(MY_MQTTVERSION)
-					    .will(std::move(willmsg))
-						.ssl(std::move(sslopts))
-						.connect_timeout(TIMEOUT)
-						.finalize();
+		.properties(properties)		
+		.user_name(username)
+		.password(password)
+		.mqtt_version(MQTTVERSION_5)
+		.will(std::move(willmsg))
+		.ssl(std::move(sslopts))
+		.connect_timeout(TIMEOUT)
+		.clean_start(true)
+		.finalize();
+#else
+	// Case version < 5
+	auto connopts = mqtt::connect_options_builder()
+		.user_name(username)
+		.password(password)
+		.mqtt_version(MQTTVERSION_3_1_1)
+		.will(std::move(willmsg))
+		.ssl(std::move(sslopts))
+		.connect_timeout(TIMEOUT)
+		.clean_session(true)
+		.finalize();
+#endif
 
 	// Create a callback object with the client and connection options
 	mqtt_client_callback cb(client,connopts);
