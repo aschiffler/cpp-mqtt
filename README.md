@@ -1,6 +1,6 @@
 # Using paho c++ MQTT Client in a CMake project
-* paho libaries are linked statically
-* OpenSSL and STD are linked dynamically
+* Paho libaries (c, c++) are linked statically
+* OpenSSL and Standard C libaries are linked dynamically
 
 ## Start Coding in the Browser
 
@@ -11,3 +11,5 @@ Within the codespace instance a mosquitto MQTT broker is started automatically f
 (_You will need a github account to do so_)
 
 
+## Notes
+* CMake is set up only for compiling and running on Linux OS. To cross-build and/or run on Windows modifications are necessary for the linked libraries.
