@@ -1,6 +1,8 @@
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <cstdlib>
+#include <ctime>
 #include <string>
 #include <chrono>
 #include <cstring>
@@ -17,36 +19,45 @@ const std::string KEY_STORE				{ "tls.key" };
 const std::string TRUST_STORE			{ "tls.crt" };
 
 const std::string LWT_TOPIC				{ "last-will/cpp-mqtt" };
-const std::string LWT_PAYLOAD			{ "Last will and testament." };
+const std::string LWT_PAYLOAD			{ "Last will and testament from cpp-mqtt." };
 
 const std::string TOPIC					{"my-topic"};
 
 const int  	QOS 						= 2;
-const auto 	TIMEOUT 					= std::chrono::seconds(1);
-const int 	MY_SESSION_EXPIRY_INTERVAL 	= 3600; 			// in seconds
-const int 	MY_MESSAGE_EXPIRY_INTERVAL 	= 60; 				// in seconds
+const auto 	TIMEOUT 					= std::chrono::seconds(10);
+const int 	MY_SESSION_EXPIRY_INTERVAL 	= 60;	 			// in seconds
+const int 	MY_MESSAGE_EXPIRY_INTERVAL 	= 20; 				// in seconds
+const int 	MY_LWT_DELAY_INTERVAL 		= 10; 				// in seconds
 
-//#define MQTT5 // Comment to use MQTT version 3.1.1
+#define MQTT5 // Comment to use MQTT version 3.1.1
 
-//////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
 
 class subscribtion_cb : public virtual mqtt::iaction_listener
 {
 	std::string name_;
 
 	void on_failure(const mqtt::token& tok) override {
-		std::cout << name_ << " failure ";
+		auto t = std::time(nullptr);
+    	auto tm = *std::localtime(&t);
+    	std::cout 	<< "[" << std::put_time(&tm, "%H:%M:%S") << "] " 
+					<< name_ << " failure ";
 		auto top = tok.get_topics();
 		if (top && !top->empty())
-			std::cout << "for topic: '" << (*top)[0] << "', ..." << std::endl;
+			std::cout 	<< "for topic: '"
+						<< (*top)[0] << "', ..." << std::endl;
 		std::cout << std::endl;
 	}
 
 	void on_success(const mqtt::token& tok) override {
-		std::cout << name_ << " success ";
+		auto t = std::time(nullptr);
+    	auto tm = *std::localtime(&t);
+    	std::cout 	<< "[" << std::put_time(&tm, "%H:%M:%S") << "] " 
+					<< name_ << " success ";
 		auto top = tok.get_topics();
 		if (top && !top->empty())
-			std::cout << "for topic: '" << (*top)[0] << "', ..." << std::endl;
+			std::cout 	<< "for topic: '"
+						<< (*top)[0] << "', ..." << std::endl;
 		std::cout << std::endl;
 	}
 
@@ -57,12 +68,12 @@ public:
 /**
  * A callback class for use with the main MQTT client.
  */
-class mqtt_client_callback : public virtual mqtt::callback, public virtual mqtt::iaction_listener
+class mqtt_client_callback : 	public virtual mqtt::callback, 
+								public virtual mqtt::iaction_listener
 {
 	// The MQTT client object to use in callback functions
 	// will be passed via the constructor from main function
 	mqtt::async_client& cli_;
-	//
 	subscribtion_cb subCb_;
 	
 	// implement the derived pure virtual from action_listener
@@ -71,9 +82,13 @@ class mqtt_client_callback : public virtual mqtt::callback, public virtual mqtt:
 	// implement the derived pure virtual from action_listener
 	void on_success(const mqtt::token& tok) override {}
 
-	// Callback when connection is lost  (No reconnect function implemented in this sample)
+	// Callback when connection is lost
+	// (No reconnect function implemented in this sample)
 	void connection_lost(const std::string& cause) override {
-		std::cout << "\nConnection lost" << std::endl;
+		auto t = std::time(nullptr);
+    	auto tm = *std::localtime(&t);
+    	std::cout 	<< "\n[" << std::put_time(&tm, "%H:%M:%S") << "] " 		
+					<< "Connection lost" << std::endl;
 		if (!cause.empty())
 			std::cout << "\tcause: " << cause << std::endl;
 		exit(1);
@@ -81,39 +96,67 @@ class mqtt_client_callback : public virtual mqtt::callback, public virtual mqtt:
 
 	// Callback when meassage sent with QOS > 0
 	void delivery_complete(mqtt::delivery_token_ptr tok) override {
-		std::cout << "Received delivery acknowledgement (ACK) for mesage id: "
-			<< (tok ? tok->get_message_id() : -1) << " (only for QOS > 0)" << std::endl;
+		auto t = std::time(nullptr);
+    	auto tm = *std::localtime(&t);
+    	std::cout 	<< "[" << std::put_time(&tm, "%H:%M:%S") << "] " 
+					<< "Received delivery acknowledgement (ACK) for mesage id: "
+					<< (tok ? tok->get_message_id() : -1)
+					<< " (only for QOS > 0)" << std::endl;
 	}
 
 	// Callback when a message arrives.
 	void message_arrived(mqtt::const_message_ptr msg) override {
-		std::cout << "Message arrived" << std::endl;
-		std::cout << "\ttopic: '" << msg->get_topic() << "'" << std::endl;
-		std::cout << "\tpayload: '" << msg->to_string() << "'\n" << std::endl;
+		auto t = std::time(nullptr);
+    	auto tm = *std::localtime(&t);
+    	std::cout 	<< "[" << std::put_time(&tm, "%H:%M:%S") << "] " 
+					<< "Message arrived"
+					<< "\n\ttopic: '" << msg->get_topic() << "'" 
+					<< "\n\tpayload: '" << msg->to_string() << "'\n" << std::endl;
 	}
 
 	// Callback when the client connects
 	// Publish a meassage 
 	// Subscribe on a topic 
 	void connected(const std::string& cause) override {
-		std::cout << "\nConnection success" << std::endl;
+		auto t = std::time(nullptr);
+    	auto tm = *std::localtime(&t);
+    	std::cout 	<< "\n[" << std::put_time(&tm, "%H:%M:%S") << "] " 
+					<< "Connection success" << std::endl;
 		
 		// Send a welcome message
-		std::cout << "\nSending 🖐  message with QOS=" << QOS << "..." << std::endl;
-		auto msg = mqtt::make_message("hello", "Cedalo is awesome! (paho c++ client)", QOS, false);
+		std::cout 	<< "\n[" << std::put_time(&tm, "%H:%M:%S") << "] " 
+					<< "Sending 🖐  message with QOS=" << QOS << " on topic 'hello'... " 
+					<< std::endl;
+#ifdef MQTT5
+		auto pubproperties = mqtt::properties();	
+		pubproperties.add({
+			mqtt::property::MESSAGE_EXPIRY_INTERVAL,MY_MESSAGE_EXPIRY_INTERVAL
+			});
+		auto msg = mqtt::message::create(
+			"hello","Cedalo is awesome! (paho c++ client v5)",
+			QOS, true, pubproperties
+			);
+#else	
+		auto msg = mqtt::make_message(
+			"hello", "Cedalo is awesome! (paho c++ client v3.1.1)",
+			QOS, true);	
+#endif
 		mqtt::delivery_token_ptr tok = cli_.publish(msg);
-		tok->wait_for(TIMEOUT);
+		tok->wait_for(1000); // just slow down for demo
 		// Check if sent succesful
 		if (tok->get_return_code() == mqtt::SUCCESS){
-			std::cout << "...OK, sent message with id: " << tok->get_message_id() << std::endl;
+			std::cout 	<< "...OK, sent message with id: "
+						<< tok->get_message_id() << std::endl;
 		} else {
 			std::cout << "...NOK, sent message" << std::endl;
 		}
 		
 		// Subscribe to topic
 		mqtt::token_ptr subtok = cli_.subscribe(TOPIC, QOS,nullptr, subCb_);
-		subtok->wait_for(TIMEOUT);
+		subtok->wait_for(1000); // just slow down for demo
+
 		// Check if sent succesful
+		std::cout 	<< "[" << std::put_time(&tm, "%H:%M:%S") << "] " ;
 		if (subtok->get_return_code() == mqtt::SUCCESS){
 			std::cout << "...OK, subscribed" << std::endl;
 		} else {
@@ -134,24 +177,23 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
-	string	username  = (argc > 3) ? string(argv[3]) : DFLT_USERNAME,
-			password  = (argc > 4) ? string(argv[4]) : DFLT_PASSWORD,
-			address  = (argc > 1) ? string(argv[1]) : DFLT_SERVER_ADDRESS,
-			clientID = (argc > 2) ? string(argv[2]) : DFLT_CLIENT_ID;
+	string	address  = (argc > 1) ? string(argv[1]) : DFLT_SERVER_ADDRESS,
+			clientID = (argc > 2) ? string(argv[2]) : DFLT_CLIENT_ID,
+			username  = (argc > 3) ? string(argv[3]) : DFLT_USERNAME,
+			password  = (argc > 4) ? string(argv[4]) : DFLT_PASSWORD;
 
-	// Check if files are in place
+
+	// Check if cert files are in place
 	{
 		ifstream tstore(TRUST_STORE);
 		if (!tstore) {
 			cerr << "The trust store file does not exist: " << TRUST_STORE << endl;
-			cerr << "  Get a copy from \"paho.mqtt.c/test/ssl/test-root-ca.crt\"" << endl;;
 			return 1;
 		}
 
 		ifstream kstore(KEY_STORE);
 		if (!kstore) {
 			cerr << "The key store file does not exist: " << KEY_STORE << endl;
-			cerr << "  Get a copy from \"paho.mqtt.c/test/ssl/client.pem\"" << endl;
 			return 1;
 		}
     }
@@ -159,14 +201,12 @@ int main(int argc, char* argv[])
 	// Create the client object
 	cout << "Initializing for server '" << address << "'..." << endl;
 	cout << "\nPress Q<Enter> or Ctrl+C to quit\n" << endl;
+	
 #ifdef MQTT5	
 	mqtt::async_client client(address, clientID,mqtt::create_options(MQTTVERSION_5));
 #else
 	mqtt::async_client client(address, clientID,mqtt::create_options(MQTTVERSION_3_1_1));
 #endif
-
-	// 
-	auto willmsg = mqtt::message(LWT_TOPIC, LWT_PAYLOAD, QOS, true);
 
 	// Build the connect options, including SSL and a LWT message.
 	auto sslopts = mqtt::ssl_options_builder()
@@ -180,22 +220,38 @@ int main(int argc, char* argv[])
 #ifdef MQTT5	
 	// Prepare v5 specific options
 	// --> see source code header: paho.mqtt.cpp/src/mqtt/properties.h for all options
-	auto properties = mqtt::properties();
-	properties.add({mqtt::property::MESSAGE_EXPIRY_INTERVAL,MY_MESSAGE_EXPIRY_INTERVAL});
-	properties.add({mqtt::property::SESSION_EXPIRY_INTERVAL,MY_SESSION_EXPIRY_INTERVAL});
 
-	// Case version >= 5
+	// last will properties
+	auto willproperties = mqtt::properties();
+	willproperties.add({
+		mqtt::property::MESSAGE_EXPIRY_INTERVAL,MY_MESSAGE_EXPIRY_INTERVAL
+		});
+	willproperties.add({
+		mqtt::property::WILL_DELAY_INTERVAL,MY_LWT_DELAY_INTERVAL
+		});
+	
+	auto willmsg = mqtt::message(LWT_TOPIC, LWT_PAYLOAD, QOS, true, willproperties);
+
+	// client properties
+	auto properties = mqtt::properties();
+	properties.add({
+		mqtt::property::SESSION_EXPIRY_INTERVAL,MY_SESSION_EXPIRY_INTERVAL
+		});
+
 	auto connopts = mqtt::connect_options_builder()
 		.properties(properties)		
 		.user_name(username)
 		.password(password)
 		.mqtt_version(MQTTVERSION_5)
-		.will(std::move(willmsg))
-		.ssl(std::move(sslopts))
+		.will(willmsg)
+		.ssl(sslopts)
 		.connect_timeout(TIMEOUT)
-		.clean_start(true)
+		.clean_start(true) // v5 specific
 		.finalize();
 #else
+	// 
+	auto willmsg = mqtt::message(LWT_TOPIC, LWT_PAYLOAD, QOS, true);
+
 	// Case version < 5
 	auto connopts = mqtt::connect_options_builder()
 		.user_name(username)
@@ -220,6 +276,7 @@ int main(int argc, char* argv[])
 		cout << "\nConnecting..." << endl;
 		mqtt::token_ptr conntok = client.connect(connopts);
 		cout << "Waiting for the connection..." << endl;
+
 		conntok->wait_for(TIMEOUT);
 		if (!client.is_connected()){
 			cout << "...timeout..." << endl;
