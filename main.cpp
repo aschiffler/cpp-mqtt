@@ -205,17 +205,17 @@ int main(int argc, char* argv[])
 #ifdef MQTT5	
 	mqtt::async_client client(address, clientID,mqtt::create_options(MQTTVERSION_5));
 #else
-	mqtt::async_client client(address, clientID,mqtt::create_options(MQTTVERSION_3_1_1));
+	mqtt::async_client client(address,clientID,mqtt::create_options(MQTTVERSION_3_1_1));
 #endif
 
 	// Build the connect options, including SSL and a LWT message.
 	auto sslopts = mqtt::ssl_options_builder()
-					   .trust_store(TRUST_STORE)
-					   .enable_server_cert_auth(false) // will fail for self signed
-					   .error_handler([](const std::string& msg) {
-						   std::cerr << "SSL Error: " << msg << std::endl;
-					   })
-					   .finalize();
+			.trust_store(TRUST_STORE)
+			.enable_server_cert_auth(false) // will fail for self signed
+			.error_handler([](const std::string& msg) {
+				std::cerr << "SSL Error: " << msg << std::endl;
+				})
+			.finalize();
 	
 #ifdef MQTT5	
 	// Prepare v5 specific options
