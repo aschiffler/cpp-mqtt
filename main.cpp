@@ -33,7 +33,7 @@ const int 	MY_LWT_DELAY_INTERVAL 		= 10; 				// in seconds
 
 /////////////////////////////////////////////////////////////////////////////////
 
-class subscribtion_cb : public virtual mqtt::iaction_listener
+class subscription_cb : public virtual mqtt::iaction_listener
 {
 	std::string name_;
 
@@ -62,7 +62,7 @@ class subscribtion_cb : public virtual mqtt::iaction_listener
 	}
 
 public:
-	subscribtion_cb(const std::string& name) : name_(name) {}
+	subscription_cb(const std::string& name) : name_(name) {}
 };
 
 /**
@@ -74,7 +74,7 @@ class mqtt_client_callback : 	public virtual mqtt::callback,
 	// The MQTT client object to use in callback functions
 	// will be passed via the constructor from main function
 	mqtt::async_client& cli_;
-	subscribtion_cb subCb_;
+	subscription_cb subCb_;
 	
 	// implement the derived pure virtual from action_listener
 	void on_failure(const mqtt::token& tok) override {}
