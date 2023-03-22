@@ -54,6 +54,9 @@ cmake  --build ./build --target all --
 ```
 This will create an executable application named cpp-mqtt in the build folder.
 
+## Blog post
+Read here the corresponding blog post:
+[https://cedalo.com/blog/implement-paho-mqtt-c-cmake-project/](https://cedalo.com/blog/implement-paho-mqtt-c-cmake-project/)
 
 ## Notes
 * CMake is set up only for compiling and running on Linux OS. To cross-build and/or run on Windows modifications are necessary for the linked libraries.
